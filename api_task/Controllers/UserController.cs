@@ -2,6 +2,7 @@
 using CsvHelper;
 using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
+using api_task.Enums;
 using api_task.Interface;
 using api_task.Mapper;
 
@@ -29,44 +30,47 @@ namespace api_task.Controllers
                 return BadRequest("Choose only csv files!");
             }
  
-            if (file == null || file.Length <= 0)
+            if (file.Length <= 0)
                 return BadRequest("Invalid file!");
-    
-                using (var reader = new StreamReader(file.OpenReadStream()))
-                using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
-                {
-                    csv.Context.RegisterClassMap<CsvDataMapper>();
-                    var newUsers = csv.GetRecords<User>().ToList();
-                    foreach (var newUser in newUsers)
-                    {
-                        var existingUser = _userRepository.FindUser(newUser);
-                        if (existingUser != null)
-                        {
-                            // Update existing user record
-                            UpdateUser(existingUser, newUser);
-                        }
-                        else
-                        {
-                            // Add new user record
-                            _userRepository.AddUser(newUser);
-                        }
-                    }
 
-                    return Ok("Users uploaded successfully.");
+            using var reader = new StreamReader(file.OpenReadStream());
+            using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
+            {
+                csv.Context.RegisterClassMap<CsvDataMapper>();
+                var newUsers = csv.GetRecords<User>().ToList();
+                foreach (var newUser in newUsers)
+                {
+                    var existingUser = _userRepository.FindUser(newUser);
+                    if (existingUser != null)
+                    {
+                        // Update existing user record
+                        UpdateUser(existingUser, newUser);
+                    }
+                    else
+                    {
+                        // Add new user record
+                        _userRepository.AddUser(newUser);
+                    }
                 }
+
+                return Ok("Users uploaded successfully.");
+            }
         }
 
         [HttpGet]
         [Route("users")]
-        public IActionResult Users(string sortDirection = "asc", int limit = 100) 
+        public IActionResult Users(SortOrderEnum sortDirection, int limit = 100) 
         {
-            var sortedUsers = _userRepository.GetUserList();
-            if (sortDirection.ToLower() == "desc")
-                sortedUsers = sortedUsers.Reverse();
+            var allUsers = _userRepository.GetUserList();
+            var sortedUsers = sortDirection switch
+            {
+                SortOrderEnum.ASC => allUsers.OrderBy(x => x.Username),
+                SortOrderEnum.DESC => allUsers.OrderByDescending(x => x.Username),
+                _ => allUsers.OrderBy(x => x.Username)
+            };
             var limitedUsers = sortedUsers.Take(limit).ToList();
 
             return Ok(limitedUsers);
-
         }
 
         [HttpDelete]

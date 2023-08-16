@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using api_task.DataAccess;
 using api_task.Interface;
 using api_task.Repository;
@@ -7,7 +8,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 // Adding project dependencies...
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddDbContextPool<AppDbContext>(options =>
